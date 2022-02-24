@@ -1,5 +1,7 @@
 from flask import (
-    Flask, render_template, url_for, request, flash)
+    Flask, render_template, url_for, request, flash, session,
+    redirect, abort
+)
 
 app = Flask(__name__)
 
@@ -10,6 +12,15 @@ menu = [
     {"name": "Первое приложение", "url": "first-app"},
     {"name": "Обратная связь", "url": "contact"},
 ]
+
+
+@app.errorhandler(404)
+def pageNotFound(error):
+    return render_template(
+        'page404.html',
+        title='Страница не найдена',
+        menu=menu
+    ), 404
 
 
 @app.route('/')
@@ -28,12 +39,6 @@ def about():
     return render_template('about.html')
 
 
-@app.route('/profile/<username>/<int:user_id>/<path:any_path>')
-def profile(username, user_id, any_path):
-    print(url_for('about'))
-    return f"Пользователь: {username} с id = {user_id}, перешел по пути {any_path}"
-
-
 @app.route('/contact', methods=["POST", "GET"])
 def contact():
     if request.method == "POST":
@@ -47,6 +52,28 @@ def contact():
         title="Обратная связь",
         menu=menu
     )
+
+
+@app.route('/login', methods=["POST", "GET"])
+def login():
+    if "userLogged" in session:
+        return redirect(url_for('profile', username=session['userLogged']))
+    elif (
+            request.method == 'POST' and
+            request.form['username'] == 'selfedu' and
+            request.form['psw'] == "123"
+    ):
+        session['userLogged'] = request.form['username']
+        return redirect(url_for('profile', username=session['userLogged']))
+    return render_template('login.html', title='Авторизация', menu=menu)
+
+
+@app.route('/profile/<username>')
+def profile(username):
+    if 'userLogged' not in session or session['userLogged'] != username:
+        abort(401)
+    print(url_for('about'))
+    return f"Пользователь: {username}"
 
 
 if __name__ == '__main__':
