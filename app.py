@@ -1,6 +1,9 @@
-from flask import Flask, render_template, url_for, request
+from flask import (
+    Flask, render_template, url_for, request, flash)
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = 'adsfdafadsfadsfadsf'
 
 menu = [
     {"name": "Установка", "url": "install-flask"},
@@ -32,10 +35,12 @@ def profile(username, user_id, any_path):
 
 
 @app.route('/contact', methods=["POST", "GET"])
-def contact():  # put application's code here
-
+def contact():
     if request.method == "POST":
-        print(request.form)
+        if len(request.form['username']) > 2:
+            flash('Сообщение отправлено')
+        else:
+            flash('Ошибка отправки')
 
     return render_template(
         'contact.html',
