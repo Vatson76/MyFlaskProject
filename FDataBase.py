@@ -59,3 +59,21 @@ class FDataBase:
         except Exception as e:
             print('Ошибка чтения постов из БД')
         return ()
+
+    def addUser(self, username, email, password_hash):
+        try:
+            self.__cur.execute(f"SELECT COUNT() as 'count' FROM users WHERE email LIKE '{email}'")
+            res = self.__cur.fetchone()
+            if res['count'] > 0:
+                print("Пользовательно с таким email уже существует")
+                return False
+
+            tm = math.floor(time.time())
+            self.__cur.execute(
+                "INSERT INTO users VALUES(NULL, ?, ?, ?, ?)", (username, email, password_hash, tm)
+            )
+            self.__db.commit()
+        except Exception as e:
+            print('Ошибка получения статьи из БД')
+            return False
+        return True

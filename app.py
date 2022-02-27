@@ -2,9 +2,10 @@ from flask import (
     Flask, render_template, url_for, request, flash, session,
     redirect, abort, make_response
 )
-from settings import get_db
-from FDataBase import FDataBase
+from werkzeug.security import generate_password_hash
 
+from FDataBase import FDataBase
+from settings import get_db
 
 app = Flask(__name__)
 
@@ -83,11 +84,51 @@ def contact():
 
 @app.route('/login', methods=["POST", "GET"])
 def login():
-    log = request.cookies.get('logged', "")
+    if "userLogged" in session:
+        return redirect(url_for('profile', username=session['userLogged']))
+    elif (
+            request.method == 'POST' and
+            request.form['username'] == 'selfedu' and
+            request.form['psw'] == "123"
+    ):
+        session['userLogged'] = request.form['username']
+        return redirect(url_for('profile', username=session['userLogged']))
+    return render_template(
+        'login.html',
+        title='Авторизация',
+        menu=get_menu()
+    )
 
-    res = make_response(f"<h1>Форма авторизации</h1><p>logged: {log}")
-    res.set_cookie("logged", 'yes')
-    return res
+
+@app.route('/register', methods=["POST", "GET"])
+def register():
+    if request.method == "POST":
+        a = request
+        dbase = connect_to_db_and_return_its_translator_class()
+        username = request.form['username']
+        email = request.form['user_email']
+        password1 = request.form['password1']
+        password2 = request.form['password2']
+
+        if (len(username) > 4
+                and len(email) > 4 and
+                len(password1) > 4
+                and password1 == password2):
+            password_hash = generate_password_hash(password1)
+            res = dbase.addUser(username, email, password_hash)
+            if res:
+                flash("Вы успешно зарегистрированы", 'success')
+                return redirect(url_for('login'))
+            else:
+                flash("Ошибка при добавлении в БД", 'error')
+        else:
+            flash("Неверно заполнены поля", 'error')
+
+    return render_template(
+        "register.html",
+        menu=get_menu(),
+        title="Регистрация"
+    )
 
 
 @app.route('/logout')
