@@ -1,6 +1,6 @@
 from flask import (
     Flask, render_template, url_for, request, flash, session,
-    redirect, abort
+    redirect, abort, make_response
 )
 from settings import get_db
 from FDataBase import FDataBase
@@ -21,9 +21,16 @@ def connect_to_db_and_return_its_translator_class():
     db = get_db()
     return FDataBase(db)
 
+
+@app.before_request
+def before_request():
+    print('before_request() called')
+
+
 def get_menu():
     dbase = connect_to_db_and_return_its_translator_class()
     return dbase.getMenu()
+
 
 def get_posts():
     dbase = connect_to_db_and_return_its_translator_class()
@@ -41,12 +48,16 @@ def pageNotFound(error):
 
 @app.route('/')
 def index():
-    return render_template(
+    content = render_template(
         'index.html',
         title='Про Flask',
         menu=get_menu(),
         posts=get_posts()
     )
+    res = make_response(content)
+    res.headers['Content-Type'] = 'text/html'
+    res.headers['Server'] = 'flasksite'
+    return res
 
 
 @app.route('/about')
@@ -72,20 +83,18 @@ def contact():
 
 @app.route('/login', methods=["POST", "GET"])
 def login():
-    if "userLogged" in session:
-        return redirect(url_for('profile', username=session['userLogged']))
-    elif (
-            request.method == 'POST' and
-            request.form['username'] == 'selfedu' and
-            request.form['psw'] == "123"
-    ):
-        session['userLogged'] = request.form['username']
-        return redirect(url_for('profile', username=session['userLogged']))
-    return render_template(
-        'login.html',
-        title='Авторизация',
-        menu=get_menu()
-    )
+    log = request.cookies.get('logged', "")
+
+    res = make_response(f"<h1>Форма авторизации</h1><p>logged: {log}")
+    res.set_cookie("logged", 'yes')
+    return res
+
+
+@app.route('/logout')
+def logout():
+    res = make_response(f"<h1>Форма выхода</h1><p>")
+    res.set_cookie("logged", "", max_age=0)
+    return res
 
 
 @app.route('/profile/<username>')
@@ -98,13 +107,16 @@ def profile(username):
 
 @app.route('/add_post', methods=['POST', 'GET'])
 def addPost():
-    dbase = connect_to_db_and_return_its_translator_class
+    dbase = connect_to_db_and_return_its_translator_class()
 
     if request.method == "POST":
+
         name_data = request.form['name']
         post_data = request.form['post']
+        url_data = request.form['url']
+
         if len(name_data) > 4 and len(post_data) > 10:
-            res = dbase.addPost(name_data, post_data)
+            res = dbase.addPost(name_data, post_data, url_data)
             if not res:
                 flash('Ошибка при добавлении статьи', category='error')
             else:
@@ -119,10 +131,10 @@ def addPost():
         )
 
 
-@app.route('/post/<int:post_id>', methods=['GET'])
-def showPost(post_id):
+@app.route('/post/<alias>', methods=['GET'])
+def showPost(alias):
     dbase = connect_to_db_and_return_its_translator_class()
-    title, post = dbase.getPost(post_id)
+    title, post = dbase.getPost(alias)
     if not title:
         abort(404)
 
@@ -132,6 +144,11 @@ def showPost(post_id):
         title=title,
         post=post
     )
+
+
+@app.route('/transfer')
+def transfer():
+    return redirect(url_for('index'), 301)
 
 
 if __name__ == '__main__':

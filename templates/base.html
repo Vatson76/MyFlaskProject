@@ -16,7 +16,6 @@
     {%- block mainmenu -%}
         <ul class="mainmenu">
             {% for m in menu %}
-{#              Здесь ошибка, неправильно работает переход из вложенных страниц#}
                 <li><a href="{{ m.url }}"> {{ m.title }}</a></li>
             {% endfor %}
         </ul>
