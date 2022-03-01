@@ -2,20 +2,26 @@ from flask import (
     Flask, render_template, url_for, request, flash, session,
     redirect, abort, make_response
 )
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from FDataBase import FDataBase
+from user_login import UserLogin
 from settings import get_db
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = 'adsfdafadsfadsfadsf'
 
-# menu = [
-#     {"name": "Установка", "url": "install-flask"},
-#     {"name": "Первое приложение", "url": "first-app"},
-#     {"name": "Обратная связь", "url": "contact"},
-# ]
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Авторизуйтесь для доступа к закрытым страницам'
+login_manager.login_message_category = 'success'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    print("load_user")
+    return UserLogin().fromDB(user_id, connect_to_db_and_return_its_translator_class())
 
 
 def connect_to_db_and_return_its_translator_class():
@@ -84,19 +90,24 @@ def contact():
 
 @app.route('/login', methods=["POST", "GET"])
 def login():
-    if "userLogged" in session:
-        return redirect(url_for('profile', username=session['userLogged']))
-    elif (
-            request.method == 'POST' and
-            request.form['username'] == 'selfedu' and
-            request.form['psw'] == "123"
-    ):
-        session['userLogged'] = request.form['username']
-        return redirect(url_for('profile', username=session['userLogged']))
+    if current_user.is_authenticated:
+        return redirect(url_for('profile'))
+
+    if request.method == "POST":
+        dbase = connect_to_db_and_return_its_translator_class()
+        user = dbase.getUserByEmail(request.form['email'])
+        if user and check_password_hash(user['password'], request.form['password']):
+            userlogin = UserLogin().create(user)
+            remember_me = True if request.form.get('remember_me') else False
+            login_user(userlogin, remember=remember_me)
+            return redirect(request.args.get('next') or url_for('profile'))
+
+        flash("Неверная пара логин/пароль", "error")
+
     return render_template(
-        'login.html',
-        title='Авторизация',
-        menu=get_menu()
+        "login.html",
+        menu=get_menu(),
+        title="Авторизация"
     )
 
 
@@ -132,18 +143,18 @@ def register():
 
 
 @app.route('/logout')
+@login_required
 def logout():
-    res = make_response(f"<h1>Форма выхода</h1><p>")
-    res.set_cookie("logged", "", max_age=0)
-    return res
+    logout_user()
+    flash("Вы вышли из аккаунта", "success")
+    return redirect(url_for('login'))
 
 
-@app.route('/profile/<username>')
-def profile(username):
-    if 'userLogged' not in session or session['userLogged'] != username:
-        abort(401)
-    print(url_for('about'))
-    return f"Пользователь: {username}"
+@app.route('/profile')
+@login_required
+def profile():
+    return f"""<p><a href="{url_for('logout')}">Выйти из профиля</a>
+    <p>user info: {current_user.get_id()}"""
 
 
 @app.route('/add_post', methods=['POST', 'GET'])
@@ -173,6 +184,7 @@ def addPost():
 
 
 @app.route('/post/<alias>', methods=['GET'])
+@login_required
 def showPost(alias):
     dbase = connect_to_db_and_return_its_translator_class()
     title, post = dbase.getPost(alias)

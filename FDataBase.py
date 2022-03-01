@@ -65,7 +65,7 @@ class FDataBase:
             self.__cur.execute(f"SELECT COUNT() as 'count' FROM users WHERE email LIKE '{email}'")
             res = self.__cur.fetchone()
             if res['count'] > 0:
-                print("Пользовательно с таким email уже существует")
+                print("Пользователь с таким email уже существует")
                 return False
 
             tm = math.floor(time.time())
@@ -77,3 +77,30 @@ class FDataBase:
             print('Ошибка получения статьи из БД')
             return False
         return True
+
+    def getUser(self, user_id):
+        try:
+            self.__cur.execute(f"SELECT * FROM users WHERE id = {user_id} LIMIT 1")
+            res = self.__cur.fetchone()
+            if not res:
+                print("Пользователь не найден")
+                return False
+
+            return res
+        except Exception as e:
+            print("Ошибка получения данных из бд" + str(e))
+        return False
+
+    def getUserByEmail(self, email):
+        try:
+            self.__cur.execute(f"SELECT * FROM users WHERE email = '{email}' LIMIT 1")
+            res = self.__cur.fetchone()
+            if not res:
+                print("Пользователь не найден")
+                return False
+
+            return res
+        except Exception as e:
+            print("Ошибка получения данных из бд" + str(e))
+
+        return False
