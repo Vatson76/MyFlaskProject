@@ -1,4 +1,5 @@
 import math
+import sqlite3
 import time
 
 
@@ -70,7 +71,7 @@ class FDataBase:
 
             tm = math.floor(time.time())
             self.__cur.execute(
-                "INSERT INTO users VALUES(NULL, ?, ?, ?, ?)", (username, email, password_hash, tm)
+                "INSERT INTO users VALUES(NULL, ?, ?, ?, NULL, ?)", (username, email, password_hash, tm)
             )
             self.__db.commit()
         except Exception as e:
@@ -104,3 +105,16 @@ class FDataBase:
             print("Ошибка получения данных из бд" + str(e))
 
         return False
+
+    def updateUserAvatar(self, avatar, user_id):
+        if not avatar:
+            return False
+
+        try:
+            binary = sqlite3.Binary(avatar)
+            self.__cur.execute(f"UPDATE users SET avatar = ? where id = ?", (binary, user_id))
+            self.__db.commit()
+        except Exception as e:
+            print("Ошибка обновления аватара" + str(e))
+            return False
+        return True

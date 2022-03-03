@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, g
 DATABASE = '/tmp/flask_site.db'
 DEBUG = True
 SECRET_KEY = 'asdfadfasdfadfgadsfgfadf'
+MAX_CONTENT_LENGTH = 1024 * 1024
 
 app = Flask(__name__)
 app.config.from_object(__name__)

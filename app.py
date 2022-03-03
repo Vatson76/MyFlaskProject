@@ -153,8 +153,23 @@ def logout():
 @app.route('/profile')
 @login_required
 def profile():
-    return f"""<p><a href="{url_for('logout')}">Выйти из профиля</a>
-    <p>user info: {current_user.get_id()}"""
+    return render_template(
+        'profile.html',
+        menu=get_menu(),
+        title='Профиль пользователя'
+    )
+
+
+@app.route('/userava')
+@login_required
+def userava():
+    img = current_user.getAvatar(app)
+    if not img:
+        return ""
+
+    response = make_response(img)
+    response.headers['Content-Type'] = 'image/png'
+    return response
 
 
 @app.route('/add_post', methods=['POST', 'GET'])
@@ -202,6 +217,27 @@ def showPost(alias):
 @app.route('/transfer')
 def transfer():
     return redirect(url_for('index'), 301)
+
+
+@app.route('/upload', methods=["POST", "GET"])
+@login_required
+def upload():
+    if request.method == 'POST':
+        dbase = connect_to_db_and_return_its_translator_class()
+        file = request.files['file']
+        if file and current_user.verifyExt(file.filename):
+            try:
+                img = file.read()
+                res = dbase.updateUserAvatar(img, current_user.get_id())
+                if not res:
+                    flash("Ошибка обновления аватара", "error")
+                flash("Аватар обновлен", "success")
+            except FileNotFoundError as e:
+                flash("Ошибка чтения файла", "error")
+        else:
+            flash("Ошибка обновления аватара", 'error')
+
+    return redirect(url_for('profile'))
 
 
 if __name__ == '__main__':
