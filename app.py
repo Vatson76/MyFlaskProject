@@ -8,6 +8,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from FDataBase import FDataBase
 from user_login import UserLogin
 from settings import get_db
+from forms import LoginForm, RegisterForm
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'adsfdafadsfadsfadsf'
@@ -93,12 +95,13 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('profile'))
 
-    if request.method == "POST":
+    form = LoginForm()
+    if form.validate_on_submit():
         dbase = connect_to_db_and_return_its_translator_class()
-        user = dbase.getUserByEmail(request.form['email'])
-        if user and check_password_hash(user['password'], request.form['password']):
+        user = dbase.getUserByEmail(form.email.data)
+        if user and check_password_hash(user['password'], form.password.data):
             userlogin = UserLogin().create(user)
-            remember_me = True if request.form.get('remember_me') else False
+            remember_me = form.remember_me.data
             login_user(userlogin, remember=remember_me)
             return redirect(request.args.get('next') or url_for('profile'))
 
@@ -107,38 +110,34 @@ def login():
     return render_template(
         "login.html",
         menu=get_menu(),
-        title="Авторизация"
+        title="Авторизация",
+        form=form
     )
 
 
 @app.route('/register', methods=["POST", "GET"])
 def register():
-    if request.method == "POST":
-        a = request
-        dbase = connect_to_db_and_return_its_translator_class()
-        username = request.form['username']
-        email = request.form['user_email']
-        password1 = request.form['password1']
-        password2 = request.form['password2']
+    form = RegisterForm()
 
-        if (len(username) > 4
-                and len(email) > 4 and
-                len(password1) > 4
-                and password1 == password2):
-            password_hash = generate_password_hash(password1)
-            res = dbase.addUser(username, email, password_hash)
-            if res:
-                flash("Вы успешно зарегистрированы", 'success')
-                return redirect(url_for('login'))
-            else:
-                flash("Ошибка при добавлении в БД", 'error')
+    if form.validate_on_submit():
+        dbase = connect_to_db_and_return_its_translator_class()
+        username = form.name.data
+        email = form.email.data
+        password1 = form.password.data
+
+        password_hash = generate_password_hash(password1)
+        res = dbase.addUser(username, email, password_hash)
+        if res:
+            flash("Вы успешно зарегистрированы", 'success')
+            return redirect(url_for('login'))
         else:
-            flash("Неверно заполнены поля", 'error')
+            flash("Ошибка при добавлении в БД", 'error')
 
     return render_template(
         "register.html",
         menu=get_menu(),
-        title="Регистрация"
+        title="Регистрация",
+        form=form
     )
 
 
