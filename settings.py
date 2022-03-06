@@ -2,6 +2,8 @@ import sqlite3
 import os
 from flask import Flask, render_template, request, g
 
+
+
 DATABASE = '/tmp/flask_site.db'
 DEBUG = True
 SECRET_KEY = 'asdfadfasdfadfgadsfgfadf'

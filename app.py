@@ -1,6 +1,6 @@
 from flask import (
     Flask, render_template, url_for, request, flash, session,
-    redirect, abort, make_response
+    redirect, abort, make_response, g
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -9,6 +9,7 @@ from FDataBase import FDataBase
 from user_login import UserLogin
 from settings import get_db
 from forms import LoginForm, RegisterForm
+from admin.admin import admin
 
 
 app = Flask(__name__)
@@ -19,31 +20,29 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Авторизуйтесь для доступа к закрытым страницам'
 login_manager.login_message_category = 'success'
 
-
-@login_manager.user_loader
-def load_user(user_id):
-    print("load_user")
-    return UserLogin().fromDB(user_id, connect_to_db_and_return_its_translator_class())
+app.register_blueprint(admin, url_prefix='/admin')
 
 
-def connect_to_db_and_return_its_translator_class():
-    db = get_db()
-    return FDataBase(db)
+dbase: FDataBase
 
 
 @app.before_request
 def before_request():
-    print('before_request() called')
+    global dbase
+    db = get_db()
+    dbase = FDataBase(db)
 
 
-def get_menu():
-    dbase = connect_to_db_and_return_its_translator_class()
-    return dbase.getMenu()
+@app.teardown_appcontext
+def close_db(error):
+    if hasattr(g, 'link_db'):
+        g.link_db.close()
 
 
-def get_posts():
-    dbase = connect_to_db_and_return_its_translator_class()
-    return dbase.getPosts()
+@login_manager.user_loader
+def load_user(user_id):
+    print("load_user")
+    return UserLogin().fromDB(user_id, dbase)
 
 
 @app.errorhandler(404)
@@ -51,7 +50,7 @@ def pageNotFound(error):
     return render_template(
         'page404.html',
         title='Страница не найдена',
-        menu=get_menu()
+        menu=dbase.getMenu()
     ), 404
 
 
@@ -60,8 +59,8 @@ def index():
     content = render_template(
         'index.html',
         title='Про Flask',
-        menu=get_menu(),
-        posts=get_posts()
+        menu=dbase.getMenu(),
+        posts=dbase.getPosts()
     )
     res = make_response(content)
     res.headers['Content-Type'] = 'text/html'
@@ -86,7 +85,7 @@ def contact():
     return render_template(
         'contact.html',
         title="Обратная связь",
-        menu=get_menu(),
+        menu=dbase.getMenu(),
     )
 
 
@@ -97,7 +96,6 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        dbase = connect_to_db_and_return_its_translator_class()
         user = dbase.getUserByEmail(form.email.data)
         if user and check_password_hash(user['password'], form.password.data):
             userlogin = UserLogin().create(user)
@@ -109,7 +107,7 @@ def login():
 
     return render_template(
         "login.html",
-        menu=get_menu(),
+        menu=dbase.getMenu(),
         title="Авторизация",
         form=form
     )
@@ -120,7 +118,6 @@ def register():
     form = RegisterForm()
 
     if form.validate_on_submit():
-        dbase = connect_to_db_and_return_its_translator_class()
         username = form.name.data
         email = form.email.data
         password1 = form.password.data
@@ -135,7 +132,7 @@ def register():
 
     return render_template(
         "register.html",
-        menu=get_menu(),
+        menu=dbase.getMenu(),
         title="Регистрация",
         form=form
     )
@@ -154,7 +151,7 @@ def logout():
 def profile():
     return render_template(
         'profile.html',
-        menu=get_menu(),
+        menu=dbase.getMenu(),
         title='Профиль пользователя'
     )
 
@@ -173,7 +170,6 @@ def userava():
 
 @app.route('/add_post', methods=['POST', 'GET'])
 def addPost():
-    dbase = connect_to_db_and_return_its_translator_class()
 
     if request.method == "POST":
 
@@ -192,7 +188,7 @@ def addPost():
 
     return render_template(
         'add_post.html',
-        menu=get_menu(),
+        menu=dbase.getMenu(),
         title='Добавление статьи'
         )
 
@@ -200,14 +196,13 @@ def addPost():
 @app.route('/post/<alias>', methods=['GET'])
 @login_required
 def showPost(alias):
-    dbase = connect_to_db_and_return_its_translator_class()
     title, post = dbase.getPost(alias)
     if not title:
         abort(404)
 
     return render_template(
         'post.html',
-        menu=get_menu(),
+        menu=dbase.getMenu(),
         title=title,
         post=post
     )
@@ -222,7 +217,6 @@ def transfer():
 @login_required
 def upload():
     if request.method == 'POST':
-        dbase = connect_to_db_and_return_its_translator_class()
         file = request.files['file']
         if file and current_user.verifyExt(file.filename):
             try:
