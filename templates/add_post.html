@@ -8,10 +8,22 @@
         </div>
     {% endfor %}
     <form action="{{ url_for('addPost') }}" method="post" class="form-contact">
-    <p><label>Название статьи: </label> <input type="text" name="name" value="" required /></p>
-    <p><label>URL статьи: </label> <input type="text" name="url" value="" required /></p>
-    <p><label>Текст статьи: </label>
-    <p><textarea name = "post" rows=7 cols=40></textarea></p>
-    <p><input type="submit" value="Добавить" />
+        {{ form.hidden_tag() }}
+        {% for field in form if field.name not in ['csrf_token','submit'] -%}
+            <p>
+                {{ field.label() }}
+                {% if field.errors %}
+                    {{ field(class="invalid") }}
+                    <span class="invalid-feedback">
+                        {% for e in field.errors %}
+                            {{ e }}
+                        {% endfor %}
+                    </span>
+                {% else %}
+                    {{ field() }}
+                {% endif %}
+            </p>
+        {% endfor %}
+        {{ form.submit() }}
     </form>
 {% endblock %}

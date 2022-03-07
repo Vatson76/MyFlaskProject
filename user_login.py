@@ -3,26 +3,35 @@ from flask_login import UserMixin
 
 
 class UserLogin(UserMixin):
-    def fromDB(self, user_id, db):
-        self.__user = db.getUser(user_id)
+    def __init__(self, profile_model, user_model):
+        self.__user_model = user_model
+        self.__profile_model = profile_model
+
+    def fromDB(self, user_id):
+        self.__user = self.__user_model.query.filter_by(id=user_id).first()
+        self.__profile = self.__profile_model.query.filter_by(user_id=user_id).first()
         return self
 
     def create(self, user):
         self.__user = user
         return self
 
+    def get_profile(self):
+        return self.__profile
+
     def get_id(self):
-        return(self.__user['id'])
+        return(self.__user.id)
 
     def getName(self):
-        return(self.__user['name'] if self.__user else "Имя не указано")
+        return(self.__profile.name if self.__profile else "Имя не указано")
 
     def getEmail(self):
-        return (self.__user['email'] if self.__user else "Email не указан")
+        return (self.__user.email if self.__user else "Email не указан")
 
-    def getAvatar(self, app):
+    def getAvatar(self, app, model_with_avatar):
         img = None
-        if not self.__user['avatar']:
+        avatar = self.__profile.avatar
+        if not avatar:
             try:
                 with app.open_resource(
                         app.root_path + url_for('static', filename='media/default_avatar.png'), "rb"
@@ -31,7 +40,7 @@ class UserLogin(UserMixin):
             except FileNotFoundError as e:
                 print("Не найден аватар по умолчанию: " + str(e))
         else:
-            img = self.__user['avatar']
+            img = avatar
 
         return img
 
