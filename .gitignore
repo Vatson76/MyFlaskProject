@@ -1,4 +1,2 @@
 .idea
 __pycache__
-flask_site.db
-sq_db.sql

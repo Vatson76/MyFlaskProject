@@ -11,8 +11,9 @@ from apps.settings import app, db, login_manager
 
 from apps.base.models import MenuElements, Users, Posts, Profiles
 
-menu = MenuElements.query.all()
-posts = Posts.query.all()
+with app.app_context():
+    menu = MenuElements.query.all()
+    posts = Posts.query.all()
 
 
 def link_db():
