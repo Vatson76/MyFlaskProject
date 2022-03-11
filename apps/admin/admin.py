@@ -45,7 +45,7 @@ def index():
     if not isLogged():
         return redirect(url_for('.login'))
     return render_template(
-        'admin/index.html',
+        'admin_templates/index.html',
         menu=menu,
         title='Админ-панель'
     )
@@ -62,7 +62,7 @@ def login():
             return redirect(url_for('.index'))
         else:
             flash("Неверна пара логин/пароль", "error")
-    return render_template('admin/login.html', title='Админ-панель')
+    return render_template('admin_templates/login.html', title='Админ-панель')
 
 
 @admin.route('/logout', methods=["POST", "GET"])
